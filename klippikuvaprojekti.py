@@ -5,13 +5,25 @@ import math
 import subprocess
 import ffmpeg
 from ffprobe import FFProbe
+import config
 
 FRAMERATE = 5 # how many images per second in final video
-SOURCE_VIDEO_FOLDER_PATH = "D:\\klippikuvaprojekti_data\\originalclips"
-VIDEO_FRAMES_FOLDER_PATH = "H:\\koodausprojektit\\klippikuvaprojekti\\frames"
-OUTPUT_VIDEO_FOLDER_PATH = "H:\\koodausprojektit\\klippikuvaprojekti\\newclips"
-OUTPUT_VIDEO_LIST_PATH = "H:\\koodausprojektit\\klippikuvaprojekti\\newclips.txt"
-FINAL_VIDEO_PATH = "H:\\koodausprojektit\\klippikuvaprojekti\\klippikuvaprojekti.mp4"
+ONLY_PROCESS_NEW_CLIPS = True # Switch to False to turn every originalclip to a newclip even if it has already been done
+SOURCE_VIDEO_FOLDER_PATH = config.SOURCE_VIDEO_FOLDER_PATH
+VIDEO_FRAMES_FOLDER_PATH = config.VIDEO_FRAMES_FOLDER_PATH
+OUTPUT_VIDEO_FOLDER_PATH = config.OUTPUT_VIDEO_FOLDER_PATH
+OUTPUT_VIDEO_LIST_PATH = config.OUTPUT_VIDEO_LIST_PATH
+FINAL_VIDEO_PATH = config.FINAL_VIDEO_PATH
+
+# Algorithm
+# - For each originalclip:
+#   - Every nth frame gets included, calculate n:
+#       - frames / 30 (because each month's video consists of around 30 clips, rough approximation)
+#   - Extract frames to frames folder
+#   - Create newclip from frames
+#   - Empty frames folder
+# - For each newclip:
+#   - Concatenate clips to a final video
 
 def frame_interval(frames):
     return math.floor(frames / 30)
@@ -69,34 +81,15 @@ def fix_unsafe_filenames():
         new_path = os.path.join(SOURCE_VIDEO_FOLDER_PATH, fixed_filename)
         os.rename(old_path, new_path)
 
-# Algoritmi:
-# - Tulostetaan, että aloitetaan...
-# - Määritellään kuvataajuus (ehkä 5-10fps?)
-# - Jokaiselle originalclips-videolle:
-#   - Tulostetaan monennessa videossa ollaan menossa
-#   - Lasketaan monennes ruutu tallennetaan:
-#     - klipin pituus = Math.floor(videon pituus / kk-päivien määrällä)
-#     - monennes ruutu = klipin pituus * videon framerate
-#   - Ruudut frames-kansioon:
-#     - ffmpeg -i originalclip.mp4 -vf "select=not(mod(n\,MONENNES RUUTU))" -vsync vfr "frames\frame%3d.jpeg"
-#   - Luodaan newclip:
-#     - ffmpeg -framerate KUVATAAJUUS -i frames\image-%3d.jpeg "newclips\newclip%3d.mp4"
-#   - Tyhjennetään frames-kansio
-# - Tulostetaan, että yhdistetään videot
-# - Jokaiselle newclips-videolle:
-#   - Yhdistetään videot > finiyshed_video.mp4
-# - Tyhjennetään newclips-kansio
-# - Tulostetaan, että valmista tuli!
-
-print("Aloitetaan...")
-
+print("Verifying filenames")
 fix_unsafe_filenames()
 
 for originalclip in os.listdir(SOURCE_VIDEO_FOLDER_PATH):
-    if already_made(originalclip):
-        print(f"Käsitellään videota {originalclip}")
+    print(f"Processing: {originalclip}")
+    
+    if already_made(originalclip) and ONLY_PROCESS_NEW_CLIPS:
         continue
-    print(f"Käsitellään videota {originalclip}")
+    
     file = os.path.join(SOURCE_VIDEO_FOLDER_PATH, originalclip)
     frames = FFProbe(file).streams[0].frames()
     video_to_frames(file, frames)
