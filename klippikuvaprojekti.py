@@ -7,7 +7,7 @@ import ffmpeg
 from ffprobe import FFProbe
 import config
 
-FRAMERATE = 5 # how many images per second in final video
+FRAMERATE = 3 # how many images per second in final video
 ONLY_PROCESS_NEW_CLIPS = True # Switch to False to turn every originalclip to a newclip even if it has already been done
 SOURCE_VIDEO_FOLDER_PATH = config.SOURCE_VIDEO_FOLDER_PATH
 VIDEO_FRAMES_FOLDER_PATH = config.VIDEO_FRAMES_FOLDER_PATH
@@ -52,7 +52,7 @@ def frames_to_video(filename):
     try:
         (
         ffmpeg
-        .input(os.path.join(VIDEO_FRAMES_FOLDER_PATH, "frame%3d.jpeg"), framerate=3)
+        .input(os.path.join(VIDEO_FRAMES_FOLDER_PATH, "frame%3d.jpeg"), framerate=FRAMERATE)
         .output(os.path.join(OUTPUT_VIDEO_FOLDER_PATH, f"frames_{filename}"))
         .overwrite_output()
         .run(capture_stdout=True, capture_stderr=True)
@@ -65,14 +65,14 @@ def already_made(filename):
     return f"frames_{filename}" in os.listdir(OUTPUT_VIDEO_FOLDER_PATH)
 
 def videos_to_finalvideo():
+    # I had to use command line ffmpeg here because I couldn't get concat to work properly on the ffmpeg python wrapper
     subprocess.run(f"ffmpeg -y -f concat -safe 0 -i {OUTPUT_VIDEO_LIST_PATH} -c copy {FINAL_VIDEO_PATH}")
 
 def write_videolist():
     with open(OUTPUT_VIDEO_LIST_PATH, "w") as file:
         for newclip in os.listdir(OUTPUT_VIDEO_FOLDER_PATH):
             path = os.path.join(OUTPUT_VIDEO_FOLDER_PATH, newclip)
-            if ".txt" not in newclip:
-                file.write(f"file \'{path}\'\n")
+            file.write(f"file \'{path}\'\n")
 
 def fix_unsafe_filenames():
     for filename in os.listdir(SOURCE_VIDEO_FOLDER_PATH):
@@ -81,7 +81,7 @@ def fix_unsafe_filenames():
         new_path = os.path.join(SOURCE_VIDEO_FOLDER_PATH, fixed_filename)
         os.rename(old_path, new_path)
 
-print("Verifying filenames")
+print("Fixing filenames")
 fix_unsafe_filenames()
 
 for originalclip in os.listdir(SOURCE_VIDEO_FOLDER_PATH):
