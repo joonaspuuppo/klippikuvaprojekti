@@ -4,3 +4,4 @@ newclips
 *.jpeg
 newclips.txt
 config.py
+__pycache__

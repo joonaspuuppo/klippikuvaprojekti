@@ -7,7 +7,7 @@ import ffmpeg
 from ffprobe import FFProbe
 import config
 
-FRAMERATE = 3 # how many images per second in final video
+FRAMERATE = 5 # how many images per second in final video
 ONLY_PROCESS_NEW_CLIPS = True # Switch to False to turn every originalclip to a newclip even if it has already been done
 SOURCE_VIDEO_FOLDER_PATH = config.SOURCE_VIDEO_FOLDER_PATH
 VIDEO_FRAMES_FOLDER_PATH = config.VIDEO_FRAMES_FOLDER_PATH
@@ -26,6 +26,8 @@ FINAL_VIDEO_PATH = config.FINAL_VIDEO_PATH
 #   - Concatenate clips to a final video
 
 def frame_interval(frames):
+    if frames == 0:
+        return 180
     return math.floor(frames / 30)
 
 def video_to_frames(file, frames):
@@ -49,11 +51,14 @@ def video_to_frames(file, frames):
         sys.exit(1)
 
 def frames_to_video(filename):
+    # making sure all output videos are mp4
+    filenameWithMp4 = filename.split(".")[0] + ".mp4"
+
     try:
         (
         ffmpeg
         .input(os.path.join(VIDEO_FRAMES_FOLDER_PATH, "frame%3d.jpeg"), framerate=FRAMERATE)
-        .output(os.path.join(OUTPUT_VIDEO_FOLDER_PATH, f"frames_{filename}"))
+        .output(os.path.join(OUTPUT_VIDEO_FOLDER_PATH, f"frames_{filenameWithMp4}"))
         .overwrite_output()
         .run(capture_stdout=True, capture_stderr=True)
         )
@@ -62,11 +67,12 @@ def frames_to_video(filename):
         sys.exit(1)
 
 def already_made(filename):
-    return f"frames_{filename}" in os.listdir(OUTPUT_VIDEO_FOLDER_PATH)
+    filenameWithMp4 = filename.split(".")[0] + ".mp4"
+    return f"frames_{filenameWithMp4}" in os.listdir(OUTPUT_VIDEO_FOLDER_PATH)
 
 def videos_to_finalvideo():
     # I had to use command line ffmpeg here because I couldn't get concat to work properly on the ffmpeg python wrapper
-    subprocess.run(f"ffmpeg -y -f concat -safe 0 -i {OUTPUT_VIDEO_LIST_PATH} -c copy {FINAL_VIDEO_PATH}")
+    subprocess.run(f"ffmpeg -y -f concat -safe 0 -i {OUTPUT_VIDEO_LIST_PATH} {FINAL_VIDEO_PATH}")
 
 def write_videolist():
     with open(OUTPUT_VIDEO_LIST_PATH, "w") as file:
@@ -79,7 +85,7 @@ def fix_unsafe_filenames():
         fixed_filename = filename.replace(" ", "_").replace("ä", "a")
         old_path = os.path.join(SOURCE_VIDEO_FOLDER_PATH, filename)
         new_path = os.path.join(SOURCE_VIDEO_FOLDER_PATH, fixed_filename)
-        os.rename(old_path, new_path)
+        os.replace(old_path, new_path)
 
 print("Fixing filenames")
 fix_unsafe_filenames()
